@@ -3,6 +3,497 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kotobuki Portal - Sign In</title>
-    <meta name="description" content="Sign into the Kotobuki portal to manage your account and projects.">
-              
+    <title>Specialist Portal — Kotobuki Seating International</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <!-- EmailJS -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Noto Sans JP', 'Lato', sans-serif; background: #F4F6F9; color: #262626; line-height: 1.7; min-height: 100vh; }
+        :root {
+            --navy: #304256; --gold: #4AB134; --white: #FFFFFF;
+            --light-gray: #FAF9F5; --dark-gray: #3D5268;
+            --text-light: #5A6B7D; --cool-gray: #EFF1F3; --text-dark: #262626;
+            --error: #d9534f; --success: #5cb85c;
+        }
+        h1,h2,h3,h4,h5,h6 { font-family: 'Noto Serif JP', Georgia, serif; font-weight: 400; line-height: 1.3; color: var(--navy); }
+        header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: var(--navy); padding: 0 40px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.15);
+        }
+        nav { display: flex; align-items: center; justify-content: space-between; height: 70px; max-width: 1280px; margin: 0 auto; }
+        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .logo-icon { height: 36px; width: auto; }
+        .logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+        .logo-text .logo-main { font-family: 'Noto Serif JP', serif; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.08em; color: #fff; text-transform: uppercase; }
+        .logo-text .logo-sub { font-family: 'Lato', sans-serif; font-size: 0.58rem; font-weight: 300; letter-spacing: 0.15em; color: rgba(255,255,255,0.7); text-transform: uppercase; }
+        .nav-back a { color: rgba(255,255,255,0.7); text-decoration: none; font-family: 'Lato', sans-serif; font-size: 0.82rem; }
+        .nav-back a:hover { color: white; }
+
+        #login-screen {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 100px 24px 60px;
+            background: linear-gradient(135deg, #1e2d3d 0%, #304256 60%, #3d5268 100%);
+        }
+        .login-card {
+            background: white; border-radius: 16px; padding: 3rem 3.5rem;
+            width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .login-badge {
+            display: inline-block; background: rgba(74,177,52,0.1);
+            border: 1px solid rgba(74,177,52,0.3); color: var(--gold);
+            font-family: 'Lato', sans-serif; font-size: 0.7rem; font-weight: 700;
+            letter-spacing: 0.18em; text-transform: uppercase;
+            padding: 4px 12px; border-radius: 3px; margin-bottom: 1.2rem;
+        }
+        .login-card h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .login-card .login-intro { font-size: 0.88rem; color: var(--text-light); margin-bottom: 2rem; }
+        .form-group { margin-bottom: 1.3rem; }
+        .form-group label { display: block; font-family: 'Lato', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dark-gray); margin-bottom: 0.5rem; }
+        .form-group input {
+            width: 100%; padding: 12px 16px;
+            border: 1.5px solid #d8dde3; border-radius: 6px;
+            font-family: 'Lato', sans-serif; font-size: 0.9rem; color: var(--text-dark);
+            background: #fafbfc; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+        }
+        .form-group input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(74,177,52,0.12); background: white; }
+        .btn-login {
+            width: 100%; padding: 14px; background: var(--navy); color: white;
+            border: none; border-radius: 6px;
+            font-family: 'Lato', sans-serif; font-size: 0.88rem; font-weight: 700;
+            letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; margin-top: 0.4rem;
+        }
+        .btn-login:hover { background: var(--dark-gray); }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+        .login-divider { text-align: center; margin: 1.4rem 0; position: relative; }
+        .login-divider::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #e8ecf0; }
+        .login-divider span { background: white; padding: 0 12px; font-size: 0.78rem; color: var(--text-light); position: relative; }
+        .btn-google {
+            width: 100%; padding: 12px; background: white; color: var(--text-dark);
+            border: 1.5px solid #d8dde3; border-radius: 6px;
+            font-family: 'Lato', sans-serif; font-size: 0.88rem; font-weight: 600;
+            cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-google:hover { border-color: var(--navy); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .error-msg { color: var(--error); font-size: 0.82rem; margin-top: 0.8rem; display: none; text-align: center; }
+        .login-footer { text-align: center; margin-top: 1.6rem; font-size: 0.78rem; color: var(--text-light); }
+        .login-footer a { color: var(--gold); text-decoration: none; }
+        .register-toggle { text-align: center; margin-top: 1rem; font-size: 0.82rem; color: var(--text-light); }
+        .register-toggle a { color: var(--navy); font-weight: 600; text-decoration: none; cursor: pointer; }
+        .register-toggle a:hover { color: var(--gold); }
+
+        #portal-screen { display: none; padding-top: 70px; min-height: 100vh; }
+        .portal-header-bar { background: white; border-bottom: 1px solid #e8ecf0; padding: 28px 40px; }
+        .portal-header-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .portal-welcome h2 { font-size: 1.5rem; margin-bottom: 0.2rem; }
+        .portal-welcome p { font-size: 0.85rem; color: var(--text-light); }
+        .portal-user-info { display: flex; align-items: center; gap: 1rem; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--navy); color: white; display: flex; align-items: center; justify-content: center; font-family: 'Lato', sans-serif; font-weight: 700; font-size: 0.9rem; }
+        .user-name-email { font-size: 0.82rem; }
+        .user-name-email strong { display: block; color: var(--navy); }
+        .user-name-email span { color: var(--text-light); }
+        .btn-logout { padding: 7px 16px; background: transparent; border: 1px solid #d8dde3; border-radius: 5px; font-family: 'Lato', sans-serif; font-size: 0.78rem; color: var(--text-light); cursor: pointer; transition: all 0.2s; }
+        .btn-logout:hover { border-color: var(--error); color: var(--error); }
+        .portal-body { max-width: 1280px; margin: 0 auto; padding: 40px; }
+        .section-eyebrow { font-family: 'Lato', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.6rem; display: block; }
+        .portal-section { margin-bottom: 3.5rem; }
+        .portal-section h3 { font-size: 1.25rem; margin-bottom: 1.5rem; padding-bottom: 0.8rem; border-bottom: 1px solid #e8ecf0; }
+        .resources-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+        .resource-card { background: white; border: 1px solid #e8ecf0; border-radius: 10px; padding: 1.4rem 1.6rem; transition: box-shadow 0.2s, border-color 0.2s; }
+        .resource-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-color: #c8d0d9; }
+        .resource-type { font-family: 'Lato', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; padding: 3px 9px; border-radius: 3px; margin-bottom: 0.9rem; display: inline-block; }
+        .type-spec { background: rgba(48,66,86,0.08); color: var(--navy); }
+        .type-cad { background: rgba(74,177,52,0.1); color: #2d7d1a; }
+        .type-bim { background: rgba(100,130,180,0.12); color: #3d5c8a; }
+        .type-data { background: rgba(200,140,0,0.1); color: #8a5e00; }
+        .resource-card h4 { font-family: 'Noto Serif JP', serif; font-size: 1rem; color: var(--navy); margin-bottom: 0.4rem; }
+        .resource-card p { font-size: 0.82rem; color: var(--text-light); margin-bottom: 1rem; line-height: 1.6; }
+        .resource-meta { font-size: 0.75rem; color: #aab4be; margin-bottom: 1rem; }
+        .btn-download { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--navy); color: white; border: none; border-radius: 5px; font-family: 'Lato', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: background 0.2s; text-decoration: none; }
+        .btn-download:hover { background: var(--dark-gray); }
+        .btn-download svg { width: 13px; height: 13px; fill: currentColor; }
+        #toast { position: fixed; bottom: 30px; right: 30px; background: var(--navy); color: white; padding: 14px 22px; border-radius: 8px; font-family: 'Lato', sans-serif; font-size: 0.85rem; box-shadow: 0 8px 24px rgba(0,0,0,0.18); transform: translateY(80px); opacity: 0; transition: transform 0.35s ease, opacity 0.35s ease; z-index: 1000; max-width: 340px; }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        #toast .toast-check { color: var(--gold); font-size: 1.1rem; margin-right: 8px; }
+        .access-banner { background: rgba(74,177,52,0.06); border: 1px solid rgba(74,177,52,0.2); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 2rem; font-size: 0.86rem; color: var(--dark-gray); }
+        .access-banner strong { color: var(--navy); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <a href="index.html" class="logo">
+                <img class="logo-icon" src="data:image/png;base64,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" alt="KSI Logo">
+                <span class="logo-text">
+                    <span class="logo-main">Kotobuki Seating</span>
+                    <span class="logo-sub">International</span>
+                </span>
+            </a>
+            <div class="nav-back"><a href="index.html">&#8592; Back to Main Site</a></div>
+        </nav>
+    </header>
+
+    <div id="login-screen">
+        <div class="login-card">
+            <div class="login-badge">&#128274; Restricted Access</div>
+            <h1>Specialist Portal</h1>
+            <p class="login-intro">For registered architects, consultants, and design professionals. Access technical specifications, CAD files, BIM data, and detailed product documentation.</p>
+
+            <div id="login-form">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="email-input" placeholder="you@firm.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password-input" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password">
+                </div>
+                <button class="btn-login" id="login-btn" onclick="handleEmailLogin()">Sign In</button>
+                <div class="login-divider"><span>or</span></div>
+                <button class="btn-google" onclick="handleGoogleLogin()">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+                    Continue with Google
+                </button>
+                <p class="error-msg" id="login-error"></p>
+            </div>
+
+            <div id="register-form" style="display:none;">
+                <div class="form-group"><label>Full Name</label><input type="text" id="reg-name" placeholder="Jane Smith"></div>
+                <div class="form-group"><label>Email Address</label><input type="email" id="reg-email" placeholder="you@firm.com"></div>
+                <div class="form-group"><label>Firm / Organisation</label><input type="text" id="reg-firm" placeholder="Smith &amp; Associates Architecture"></div>
+                <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="At least 8 characters"></div>
+                <button class="btn-login" id="register-btn" onclick="handleRegister()">Create Account</button>
+                <p class="error-msg" id="register-error"></p>
+            </div>
+
+            <div class="register-toggle">
+                <span id="toggle-text">New to the portal? </span>
+                <a id="toggle-link" onclick="toggleForm()">Create an account</a>
+            </div>
+            <div class="login-footer">
+                By signing in you agree to KSI's <a href="#">Terms of Use</a> and <a href="#">Privacy Policy</a>.<br>
+                Need access? <a href="index.html#contact">Contact our team</a>.
+            </div>
+        </div>
+    </div>
+
+    <div id="portal-screen">
+        <div class="portal-header-bar">
+            <div class="portal-header-inner">
+                <div class="portal-welcome">
+                    <h2>Specialist Resource Library</h2>
+                    <p>Technical specifications, CAD, BIM, and in-depth product documentation for registered professionals.</p>
+                </div>
+                <div class="portal-user-info">
+                    <div class="user-avatar" id="user-avatar">&#8212;</div>
+                    <div class="user-name-email">
+                        <strong id="user-display-name">&#8212;</strong>
+                        <span id="user-email-display">&#8212;</span>
+                    </div>
+                    <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="portal-body">
+            <div class="access-banner">
+                <strong>Welcome to the KSI Specialist Portal.</strong> All downloads are logged and will prompt a follow-up from our technical team. For custom specifications or project consultations, <a href="index.html#contact" style="color:var(--gold);">contact us directly</a>.
+            </div>
+
+            <div class="portal-section">
+                <span class="section-eyebrow">Telescopic Seating &middot; RCS System</span>
+                <h3>Multipurpose Systems &#8212; Technical Resources</h3>
+                <div class="resources-grid">
+                    <div class="resource-card">
+                        <span class="resource-type type-spec">Technical Spec</span>
+                        <h4>RCS System Overview</h4>
+                        <p>Full technical specification for the RCS remotely controlled telescopic seating system, including drive unit, safety interlock, and sensor systems.</p>
+                        <div class="resource-meta">PDF &middot; ~2.4 MB &middot; Updated 2025</div>
+                        <button class="btn-download" onclick="handleDownload('RCS System Overview Spec Sheet', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-cad">CAD Files</span>
+                        <h4>RCS Seating CAD Package</h4>
+                        <p>AutoCAD DWG files for standard RCS configurations, including plan, elevation, and section views for common venue layouts.</p>
+                        <div class="resource-meta">DWG/DXF &middot; ~18 MB &middot; AutoCAD 2020+</div>
+                        <button class="btn-download" onclick="handleDownload('RCS CAD Package', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-bim">BIM Object</span>
+                        <h4>RCS Revit Family</h4>
+                        <p>Revit RFA file for the RCS telescopic seating system with parametric configurations and LOD 300 geometry.</p>
+                        <div class="resource-meta">RFA &middot; ~8 MB &middot; Revit 2021+</div>
+                        <button class="btn-download" onclick="handleDownload('RCS Revit BIM Family', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-data">Load Data</span>
+                        <h4>Structural Load Calculations</h4>
+                        <p>Distributed and point load data for RCS installations, for use in structural engineering assessments and floor specification.</p>
+                        <div class="resource-meta">PDF &middot; ~0.8 MB &middot; Certified 2024</div>
+                        <button class="btn-download" onclick="handleDownload('RCS Structural Load Data', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="portal-section">
+                <span class="section-eyebrow">Bespoke Public Seating &middot; Theater &amp; Performing Arts</span>
+                <h3>Seating Solutions &#8212; Technical Resources</h3>
+                <div class="resources-grid">
+                    <div class="resource-card">
+                        <span class="resource-type type-spec">Technical Spec</span>
+                        <h4>Theater Seating Range Specification</h4>
+                        <p>Complete specification for KSI's bespoke theater seating range &#8212; dimensions, materials, upholstery options, and finish specifications.</p>
+                        <div class="resource-meta">PDF &middot; ~3.1 MB &middot; Updated 2025</div>
+                        <button class="btn-download" onclick="handleDownload('Theater Seating Range Specification', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-cad">CAD Files</span>
+                        <h4>Theater Seating CAD Package</h4>
+                        <p>DWG files covering standard and raked-floor seating configurations with accessibility provisions and sightline geometry.</p>
+                        <div class="resource-meta">DWG/DXF &middot; ~12 MB &middot; AutoCAD 2020+</div>
+                        <button class="btn-download" onclick="handleDownload('Theater Seating CAD Package', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-bim">BIM Object</span>
+                        <h4>Theater Seating Revit Family</h4>
+                        <p>Revit RFA with parametric seat spacing, row pitch, and upholstery colour parameters. Includes ADA-compliant companion seat variants.</p>
+                        <div class="resource-meta">RFA &middot; ~6 MB &middot; Revit 2021+</div>
+                        <button class="btn-download" onclick="handleDownload('Theater Seating Revit BIM Family', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-data">Acoustics Data</span>
+                        <h4>Acoustic Absorption Coefficients</h4>
+                        <p>Measured absorption data (250 Hz &#8211; 4 kHz) for occupied and unoccupied KSI theater seating configurations, for use in acoustic modelling.</p>
+                        <div class="resource-meta">PDF &middot; ~1.2 MB &middot; Third-party tested</div>
+                        <button class="btn-download" onclick="handleDownload('Acoustic Absorption Data Sheet', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="portal-section">
+                <span class="section-eyebrow">Sleep Capsule Systems</span>
+                <h3>Capsule Products &#8212; Technical Resources</h3>
+                <div class="resources-grid">
+                    <div class="resource-card">
+                        <span class="resource-type type-spec">Technical Spec</span>
+                        <h4>SPACE D Capsule Full Specification</h4>
+                        <p>Complete specification for the SPACE D flagship capsule &#8212; dimensions, electrical, ventilation, fire rating, and customisation matrix (36 combinations).</p>
+                        <div class="resource-meta">PDF &middot; ~4.2 MB &middot; Updated 2025</div>
+                        <button class="btn-download" onclick="handleDownload('SPACE D Full Specification', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-cad">CAD Files</span>
+                        <h4>Capsule Room Layout CAD Package</h4>
+                        <p>Floor plan and elevation DWG files for standard, premium, and women's-only capsule room configurations with minimum clearance zones.</p>
+                        <div class="resource-meta">DWG/DXF &middot; ~9 MB &middot; AutoCAD 2020+</div>
+                        <button class="btn-download" onclick="handleDownload('Capsule Room Layout CAD', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                    <div class="resource-card">
+                        <span class="resource-type type-data">MEP Data</span>
+                        <h4>Mechanical &amp; Electrical Requirements</h4>
+                        <p>Ventilation rates, electrical load schedules, and data cabling requirements for SPACE D and DREAM-C capsule installations.</p>
+                        <div class="resource-meta">PDF &middot; ~1.6 MB</div>
+                        <button class="btn-download" onclick="handleDownload('Capsule MEP Requirements', this)">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // ===================================================
+        // FIREBASE CONFIGURATION
+        // Replace this object with your project config from:
+        // Firebase Console > Project Settings > Your apps
+        // ===================================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // ===================================================
+        // EMAILJS CONFIGURATION
+        // Get these values from https://dashboard.emailjs.com
+        // Create a template with variables:
+        //   {{user_name}}, {{user_email}}, {{resource_name}}, {{timestamp}}
+        // ===================================================
+        const EMAILJS_SERVICE_ID  = "YOUR_EMAILJS_SERVICE_ID";
+        const EMAILJS_TEMPLATE_ID = "YOUR_EMAILJS_TEMPLATE_ID";
+        const EMAILJS_PUBLIC_KEY  = "YOUR_EMAILJS_PUBLIC_KEY";
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+
+        let isRegisterMode = false;
+        let currentUser = null;
+
+        function toggleForm() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById("login-form").style.display     = isRegisterMode ? "none" : "block";
+            document.getElementById("register-form").style.display  = isRegisterMode ? "block" : "none";
+            document.getElementById("toggle-text").textContent      = isRegisterMode ? "Already have an account? " : "New to the portal? ";
+            document.getElementById("toggle-link").textContent      = isRegisterMode ? "Sign in" : "Create an account";
+            document.getElementById("login-error").style.display    = "none";
+            document.getElementById("register-error").style.display = "none";
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            el.textContent = msg;
+            el.style.display = "block";
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerHTML = '<span class="toast-check">&#10003;</span>' + message;
+            toast.classList.add("show");
+            setTimeout(function() { toast.classList.remove("show"); }, 4500);
+        }
+
+        function handleEmailLogin() {
+            const email    = document.getElementById("email-input").value.trim();
+            const password = document.getElementById("password-input").value;
+            if (!email || !password) { showError("login-error", "Please enter your email and password."); return; }
+            document.getElementById("login-btn").disabled = true;
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(function(err) {
+                    showError("login-error", getFriendlyError(err.code));
+                    document.getElementById("login-btn").disabled = false;
+                });
+        }
+
+        function handleGoogleLogin() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(function(err) { showError("login-error", err.message); });
+        }
+
+        function handleRegister() {
+            const name     = document.getElementById("reg-name").value.trim();
+            const email    = document.getElementById("reg-email").value.trim();
+            const firm     = document.getElementById("reg-firm").value.trim();
+            const password = document.getElementById("reg-password").value;
+            if (!name || !email || !firm || !password) { showError("register-error", "Please fill in all fields."); return; }
+            if (password.length < 8) { showError("register-error", "Password must be at least 8 characters."); return; }
+            document.getElementById("register-btn").disabled = true;
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(function(cred) { return cred.user.updateProfile({ displayName: name + " | " + firm }); })
+                .catch(function(err) {
+                    showError("register-error", getFriendlyError(err.code));
+                    document.getElementById("register-btn").disabled = false;
+                });
+        }
+
+        function handleLogout() {
+            auth.signOut();
+        }
+
+        function getFriendlyError(code) {
+            const msgs = {
+                "auth/wrong-password": "Incorrect password. Please try again.",
+                "auth/user-not-found": "No account found with that email.",
+                "auth/email-already-in-use": "An account with this email already exists.",
+                "auth/invalid-email": "Please enter a valid email address.",
+                "auth/weak-password": "Password must be at least 8 characters.",
+                "auth/too-many-requests": "Too many attempts. Please try again later.",
+                "auth/network-request-failed": "Network error. Please check your connection.",
+            };
+            return msgs[code] || "An error occurred. Please try again.";
+        }
+
+        auth.onAuthStateChanged(function(user) {
+            if (user) {
+                currentUser = user;
+                document.getElementById("login-screen").style.display  = "none";
+                document.getElementById("portal-screen").style.display = "block";
+                const displayName = user.displayName || user.email.split("@")[0];
+                const initials    = displayName.split(" ").slice(0,2).map(function(w){ return w[0]; }).join("").toUpperCase();
+                document.getElementById("user-display-name").textContent  = displayName;
+                document.getElementById("user-email-display").textContent = user.email;
+                document.getElementById("user-avatar").textContent        = initials;
+                showToast("Welcome, " + displayName.split(" ")[0] + ". You have full specialist access.");
+            } else {
+                currentUser = null;
+                document.getElementById("login-screen").style.display  = "flex";
+                document.getElementById("portal-screen").style.display = "none";
+            }
+        });
+
+        function handleDownload(resourceName, btn) {
+            if (!currentUser) return;
+            const user = currentUser;
+            const timestamp = new Date().toLocaleString("en-US", {
+                timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short"
+            });
+            const original = btn.innerHTML;
+            btn.innerHTML = 'Requesting...';
+            btn.disabled = true;
+
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                user_name:     user.displayName || "Portal User",
+                user_email:    user.email,
+                resource_name: resourceName,
+                timestamp:     timestamp,
+                portal_url:    window.location.href,
+            }).then(function() {
+                console.log("Sales team notified:", resourceName);
+            }).catch(function(err) {
+                console.warn("EmailJS notification failed:", err);
+            });
+
+            setTimeout(function() {
+                btn.innerHTML = original;
+                btn.disabled = false;
+                showToast("Download requested. Our team will follow up with " + user.email);
+            }, 900);
+        }
+    </script>
+
+</body>
+</html>
